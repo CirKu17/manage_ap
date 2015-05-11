@@ -1,0 +1,89 @@
+#!/bin/bash
+
+# manage_ap
+# Wrapper for create_ap to switch an AP together with airplane mode
+#
+#
+# The following two lines are used to start and stop a create_ap instance, so
+# edit as you need
+
+CREATE_AP_START="echo -e 'SSID\nPassphrase' | create_ap wlan0 eth0"
+CREATE_AP_STOP="create_ap --stop wlan0"
+
+# For security reasons this file should be owned by root and the network
+# passphrase passed as in the example above.
+#
+
+usage() {
+    echo "Usage: "$(basename $0)" [option]"
+    echo
+    echo "Options:"
+    echo "-h, --help        Show this help"
+    echo "-u, --up          Start create_ap"
+    echo "-d, --down        Stop create_ap"
+    echo "-s, --sleep       Stop create_ap instance and activate airplane mode"
+    echo "-r, --resume      Deactivate airplane mode and start create_ap"
+    echo
+    echo "NOTE: create_ap instances are created/destroyed using the commands specified in the script parameters, edit them as you need first"
+    exit 0
+}
+
+up() {
+    eval $CREATE_AP_START &
+    exit 0
+}
+
+down() {
+    eval $CREATE_AP_STOP
+    exit 0
+}
+
+sleep() {
+    eval $CREATE_AP_STOP
+    nmcli nm wifi off
+    exit 0
+}
+
+resume() {
+    nmcli nm wifi on
+    eval $CREATE_AP_START &
+    exit 0
+}
+
+ARGS=( "$@" )
+GETOPT_ARGS=$(getopt -o hudsr -l "help,up,down,sleep,resume" -n "$(basename $0)" -- "$@");
+[[ $? -ne 0 ]] && exit 1
+eval set -- "$GETOPT_ARGS"
+while :; do
+    case "$1" in
+        -h|--help)
+            usage
+            exit 0
+            ;;
+        -u|--up)
+            shift
+            up
+            ;;
+        -d|--down)
+            shift
+            down
+            ;;
+        -s|--sleep)
+            shift
+            sleep
+            ;;
+        -r|--resume)
+            shift
+            resume
+            ;;
+        --)
+            shift
+            break
+            ;;
+    esac
+done
+
+if [[ "$#" -lt 1 ]]; then
+    usage
+    exit 1
+fi
